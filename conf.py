@@ -193,6 +193,7 @@ lit_use_default_style = True
 translation_languages = [
     ("en", "🇺🇸", "English", ""),
     ("fr", "🇫🇷", "Français", "French"),
+    ("ru", "🇷🇺", "Русский", "Russian"),
     ("kr", "🇰🇷", "한국인", "Korean"),
     ("it", "🇮🇹", "Italiano", "Italian"),
 ]
