@@ -1,54 +1,54 @@
-The Adapter
-===========
+# Адаптер
 
 ```{lit-setup}
 :tangle-root: 005 - The Adapter
 :parent: 001 - Hello WebGPU
 ```
 
-*Resulting code:* [`step005`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step005)
+_Итоговый код_: [`step005`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step005)
 
-Before getting our hand on a **device**, we need to select an **adapter**. The same host system may expose **multiple adapters** if it has access to multiple physical GPUs. It may also have an adapter that represents an emulated/virtual device.
+Перед тем как начать работать с **девайсом**, мы должны выбрать **адаптер**. Одна система может иметь **несколько адаптеров**, если у нее есть доступ к нескольким GPU. Также может быть адаптер, который представляет эмулированное/виртуальное устройство.
 
 ```{note}
-It is common that high-end laptops have **two physical GPUs**, a **high performance** one and a **low energy** consumption one (that is usually integrated inside the CPU chip).
+Часто бывает, что топовые ноутбуки имеют **два GPU**, с **высокопроизводительным** и **экономным** энергопотреблением (которое интегрировано в чип CPU).
+
 ```
 
-Each adapter advertises a list of optional **features** and **supported limits** that it can handle. These are used to determine the overall capabilities of the system before **requesting the device**.
+Каждый адаптер предлагает список необязательных **фич (возможностей)** и **поддерживаемые ограничения**, с которыми он может справиться. Все это используется, чтобы определить возможности системы перед тем как **запрашивать девайс**.
 
-> 🤔 Why do we have both an **adapter** and then a **device** abstraction?
+> 🤔 Но зачем нам и **адаптер**, и **девайс**?
 
-The idea is to limit the "it worked on my machine" issue you could encounter when trying your program on a different machine. The **adapter** is used to **access the capabilities** of the user's hardware, which are used to select the behavior of your application among very different code paths. Once a code path is chosen, a **device** is created with **the capabilities we choose**.
+Идея заключается в том, чтобы "работает на машине" стало "работает на чужой машине тоже". **Адаптер** нужен, чтобы получить **доступ к возможностям** пользовательского устройства, которые используются для выбора поведения твоего приложения среди самых разных путей кода. Когда путь кода выбран, **устройство** создается с **выбранными возможностями**.
 
-Only the capabilities selected for this device are then allowed in the rest of the application. This way, it is **not possible to inadvertently rely on capabilities specific to your own machine**.
+Только выбранные возможности для устройства разрешены в дальнейшем в приложении. Таким образом, **невозможно использовать возможности специфичные только для твоего устройства**.
 
 ```{figure} /images/device-creation.png
 :align: center
-In an advanced use of the adapter/device duality, we can set up multiple limit presets and select one depending on the adapter. In our case, we have a single preset and abort early if it is not supported.
+Дополнительно, используя разделение адаптер/девайс, мы можем настроить различные пресеты для ограничений и выбирать нужный в зависимости от адаптера. В нашем случае, мы будем использовать один пресет и абортить если он не поддерживается.
 ```
 
-Requesting the adapter
-----------------------
+## Получение адаптера
 
-An adapter is not something we *create*, but rather something that we *request* using the function `wgpuInstanceRequestAdapter`.
+Адаптер это не то, что мы _создаем_, но то что мы _запрашиваем_, используя функцию `wgpuInstanceRequestAdapter`.
 
 ````{note}
-The names of the procedure provided by `webgpu.h` always follow the same construction:
+Название процедур, предоставляемых `webgpu.h`, всегда следуют одной и той же конструкции:
 
 ```C
 wgpuSomethingSomeAction(something, ...)
-             ^^^^^^^^^^ // What to do...
-    ^^^^^^^^^ // ...on what type of object
-^^^^ // (Common prefix to avoid naming collisions)
+             ^^^^^^^^^^ // Что делать...
+    ^^^^^^^^^ // ...над каким типом объекта
+^^^^ // (префикс, чтобы избежать коллизии имён)
 ```
 
-The first argument of the function is always a "handle" (a blind pointer) representing an object of type "Something".
+Первый аргумент функции это всегда "хэндл" (слепой указатель) представляющий объект типа "Something".
+
 ````
 
-So, as suggested by the name, the first argument is the `WGPUInstance` that we created in the previous chapter. What about the others?
+Поэтому, как подсказывает имя, первый аргумент это `WGPUInstance`, который мы создали в предыдущей главе. Что насчет остальных?
 
 ```C++
-// Signature of the wgpuInstanceRequestAdapter function as defined in webgpu.h
+// Сигнатура функции wgpuInstanceRequestAdapter, описанная в webgpu.h
 void wgpuInstanceRequestAdapter(
 	WGPUInstance instance,
 	WGPU_NULLABLE WGPURequestAdapterOptions const * options,
@@ -58,23 +58,23 @@ void wgpuInstanceRequestAdapter(
 ```
 
 ```{note}
-It is always informative to have a look at how a function is defined in `webgpu.h`!
+Всегда очень полезно посмотреть как определена функция в `webgpu.h`!
 ```
 
-The second argument is a set of **options**, that is a bit like the **descriptor** that we find in `wgpuCreateSomething` functions, we detail them below. The `WGPU_NULLABLE` flag is an empty define that is only here to tell the reader (i.e., us) that it is allowed to leave the argument to `nullptr` to use **default options**.
+Второй аргумент это множество **параметров**, которые похожи на **дескриптор**, который мы видели в функциях `wgpuCreateSomething`, мы опишем это множество параметров ниже. Флаг `WGPU_NULLABLE` это пустой дефайн, который дает читателям (то есть, нам), оставить аргумент `nullptr`, чтобы использовать **настройки по умолчанию**.
 
-### Asynchronous function
+### Асинхронные функции
 
-The last two arguments go together, and reveal yet another **WebGPU idiom**. Indeed, the function `wgpuInstanceRequestAdapter` is **asynchronous**. This means that instead of directly returning a `WGPUAdapter` object, this request function remembers a **callback**, i.e. a function that will be called whenever the request ends.
+Последние два аргумента идут вместе, и представляют собой еще одну **идиому WebGPU**. Функция `wgpuInstanceRequestAdapter` **асинхронная**. Это значит, что вместо того, чтобы напрямую возвращать объект `WGPUAdapter`, эта функция запоминает **коллбэк**, тобиш функцию, которая будет вызвана когда запрос будет выполнен.
 
 ```{note}
-Asynchronous functions are used in multiple places in the WebGPU API, whenever an operation may take time. Actually, **none of the WebGPU functions** takes time to return. This way, the CPU program that we are writing never gets blocked by a lengthy operation!
+Асинхронные функции используются в нескольких местах WebGPU API, там где операция может занять некоторое время. На самом деле **ни одна из функций WebGPU** не занимает времени для возврата. Так, программа CPU, которую мы пишем, никогда не заблокируется длинной операцией!
 ```
 
-To understand this callback mechanism a bit better, here is the definition of the `WGPURequestAdapterCallback` function type:
+Чтобы понять этот механизм коллбэков, вот определение типа функции `WGPURequestAdapterCallback`:
 
 ```C++
-// Definition of the WGPURequestAdapterCallback function type as defined in webgpu.h
+// Определение типа функции WGPURequestAdapterCallback, определенной в webgpu.h
 typedef void (*WGPURequestAdapterCallback)(
 	WGPURequestAdapterStatus status,
 	WGPUAdapter adapter,
@@ -83,37 +83,37 @@ typedef void (*WGPURequestAdapterCallback)(
 );
 ```
 
-The callback is a **function** that receives the **requested adapter** as an argument, together with **status** information (that tells whether the request failed and why), as well as this mysterious `userdata` **pointer**.
+Коллбэк это **функция**, которая получает **запрошенный адаптер** как аргумент, вместе с **статусом** (который говорит зафейлился ли реквест и почему если да), и мистический **указатель** `userdata`.
 
-This `userdata` pointer can be anything, it is not interpreted by WebGPU, but only **forwarded** from the initial call to `wgpuInstanceRequestAdapter` to the callback, as a mean to **share some context information**:
+Этот указатель `userdata` может быть чем угодно, он не описан в WebGPU, и только **передается** из изначального вызова `wgpuInstanceRequestAdapter` в коллбэк, как средство для **передачи контекстной информации**:
 
 ```C++
 void onAdapterRequestEnded(
-	WGPURequestAdapterStatus status, // a success status
-	WGPUAdapter adapter, // the returned adapter
-	char const* message, // error message, or nullptr
-	void* userdata // custom user data, as provided when requesting the adapter
+	WGPURequestAdapterStatus status, // статус реквеста
+	WGPUAdapter adapter, // получаемый адаптер
+	char const* message, // сообщение об ошибке, или nullptr
+	void* userdata // кастомная инфа юзера, передается при реквесте адаптера
 ) {
-	// [...] Do something with the adapter
+	// [...] Сделать что-то с адаптером
 
-	// Manipulate user data
+	// Взаимодействие с user data
 	bool* pRequestEnded = reinterpret_cast<bool*>(userdata);
 	*pRequestEnded = true;
 }
 
 // [...]
 
-// In main():
+// В main():
 bool requestEnded = false;
 wgpuInstanceRequestAdapter(
-	instance /* equivalent of navigator.gpu */,
+	instance /* эквивалент navigator.gpu */,
 	&options,
 	onAdapterRequestEnded,
-	&requestEnded // custom user data is simply a pointer to a boolean in this case
+	&requestEnded // в данном случае кастомная инфа юзера это просто указатель на булеан
 );
 ```
 
-We see in the next section a more advanced use of this context in order to retrieve the adapter once the request is done.
+В следующих главах мы увидим более продвинутое использование контекста для получения адаптера, как только реквест будет выполнен.
 
 ````{admonition} Note - JavaScript API
 :class: foldable note
@@ -297,20 +297,20 @@ int main() {
 ```
 
 ```{lit} C++, Main body ru (hidden)
+
 ```
 
 ```{lit} C++, Destroy things ru (hidden)
 {{Destroy adapter}}
 ```
 
-Inspecting the adapter
-----------------------
+## Inspecting the adapter
 
 The adapter object provides **information about the underlying implementation** and hardware, and about what it is able or not to do. It advertises the following information:
 
- - **Limits** regroup all the **maximum and minimum** values that may limit the behavior of the underlying GPU and its driver. A typical examples is the maximum texture size. Supported limits are retrieved using `wgpuAdapterGetLimits`.
- - **Features** are non-mandatory **extensions** of WebGPU, that adapters may or may not support. They can be listed using `wgpuAdapterEnumerateFeatures` or tested individually with `wgpuAdapterHasFeature`.
- - **Properties** are extra information about the adapter, like its name, vendor, etc. Properties are retrieved using `wgpuAdapterGetProperties`.
+-   **Limits** regroup all the **maximum and minimum** values that may limit the behavior of the underlying GPU and its driver. A typical examples is the maximum texture size. Supported limits are retrieved using `wgpuAdapterGetLimits`.
+-   **Features** are non-mandatory **extensions** of WebGPU, that adapters may or may not support. They can be listed using `wgpuAdapterEnumerateFeatures` or tested individually with `wgpuAdapterHasFeature`.
+-   **Properties** are extra information about the adapter, like its name, vendor, etc. Properties are retrieved using `wgpuAdapterGetProperties`.
 
 ```{note}
 In the accompanying code, adapter capability inspection is enclosed in the `inspectAdapter()` function.
@@ -453,11 +453,10 @@ Adapter properties:
  - backendType: 0x5
 ```
 
-Conclusion
-----------
+## Conclusion
 
- - The very first thing to do with WebGPU is to get the **adapter**.
- - Once we have an adapter, we can inspect its **capabilities** (limits, features) and properties.
- - We learned to use **asynchronous functions** and **double call** enumeration functions.
+-   The very first thing to do with WebGPU is to get the **adapter**.
+-   Once we have an adapter, we can inspect its **capabilities** (limits, features) and properties.
+-   We learned to use **asynchronous functions** and **double call** enumeration functions.
 
-*Resulting code:* [`step005`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step005)
+_Resulting code:_ [`step005`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step005)
