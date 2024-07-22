@@ -84,252 +84,257 @@ WebGPU это *Render Hardware Interface* (RHI, *Аппаратный интер
 Прекомпилированные бинарники даны проектом `wgpu-native`, поэтому смело доверяйте им. Единственное что я добавил это `CMakeLists.txt`, который позволяет их легко подключить.
 ```
 
-**Pros**
+**Плюсы**
  - Это самый легковесный вариант для сборки.
 
 
-**Cons**
+**Минусы**
  - Не нужно собирать из исходников.
  - `wgpu-native` не дает debug инфу как Dawn.
 
-### Option B: The comfort of Dawn
+### Опция B: Удобство Dawn
 
-Dawn gives much better error messages, and since it is written in C++ we can build it from source and thus inspect more deeply the stack trace in case of crash:
+Dawn дает гораздо лучшие сообщения об ошибках, и так как он написан на C++, мы можем его собрать из исходников и потому более тщательно проверять stack trace в случае краша:
 
- - [Dawn for any platform](https://github.com/eliemichel/WebGPU-distribution/archive/refs/tags/dawn-6512.zip)
+ - [Dawn для любой платформы](https://github.com/eliemichel/WebGPU-distribution/archive/refs/tags/dawn-6512.zip)
 
 ```{note}
-The Dawn-based distribution I provide here fetches the source code of Dawn from its original repository, but in an as shallow as possible way, and pre-sets some options to avoid building parts that we do not use.
+Пакет основанный на Dawn, который я даю, берет исходники Dawn из оригинального репозитория, но как можно более поверхностно, и устанавливает некоторые настройки так, чтобы не собирать части, которые мы не будем использовать.
 ```
 
-**Pros**
+**Плюсы**
 
- - Dawn is much more comfortable to develop with, because it gives more detailed error messages.
- - It is in general ahead of `wgpu-native` regarding the progress of implementation (but `wgpu-native` will catch up eventually).
+ - С Dawn гораздо более удобно разрабатывать, потому что он дает более подробные сообщения об ошибки.
+ - Он опережает `wgpu-native` в разработке (но `wgpu-native` скоро догонит).
 
-**Cons**
- - Although I reduced the need for extra dependencies, you still need to [install Python](https://www.python.org/) and [git](https://git-scm.com/download).
- - The distribution fetches Dawn's source code and its dependencies so the first time you build you need an **Internet connection**.
- - The initial build takes significantly longer, and occupies more disk space overall.
+**Минусы**
+ - Хотя я избавил тебя от установки некоторых дополнительных зависимостей, все еще нужно [установить Python](https://www.python.org/) и [git](https://git-scm.com/download).
+ - Пакет скачивает исходники Dawn и его зависимости, поэтому нужно **интернет соединение**.
+ - Первая сборка занимает значительное количество времени, и занимает больше места на диске.
 
 ````{note}
-On Linux check out [Dawn's build documentation](https://dawn.googlesource.com/dawn/+/HEAD/docs/building.md) for the list of packages to install. As of April 7, 2024, the list is the following (for Ubuntu):
+На Linux чекни [документацию по сборке Dawn](https://dawn.googlesource.com/dawn/+/HEAD/docs/building.md) для списка зависимостей, которые нужно установить. На момент 7 Апреля, 2024, список следующий (для Ubuntu):
 
 ```bash
 sudo apt-get install libxrandr-dev libxinerama-dev libxcursor-dev mesa-common-dev libx11-xcb-dev pkg-config nodejs npm
 ```
 ````
 
-### Option C: The flexibility of both
+### Опция C: Гибкость обоих
 
-In this option, we only include a couple of CMake files in our project, which then dynamically fetch either `wgpu-native` or Dawn depending on a configuration option:
+Здесь мы просто подключаем несколько файлов CMake в наш проект, которые динамически будут подруба либо wgpu-native`, либо Dawn, в зависимости от настройки конфигурации:
 
 ```
 cmake -B build -DWEBGPU_BACKEND=WGPU
-# or
+# или
 cmake -B build -DWEBGPU_BACKEND=DAWN
 ```
 
 ```{note}
-The **accompanying code** uses this Option C.
+ **Сопровождающий (типо дальнейший в гайде) код** использует эту Опцию C.
 ```
 
-This is given by the `main` branch of my distribution repository:
+Он использует в ветке `main` моего репозитория:
 
- - [WebGPU any distribution](https://github.com/eliemichel/WebGPU-distribution/archive/refs/tags/main-v0.2.0-beta1.zip)
+ - [WebGPU любой бэк](https://github.com/eliemichel/WebGPU-distribution/archive/refs/tags/main-v0.2.0-beta1.zip)
 
-**Pros**
- - You can have two `build` at the same time, one that uses Dawn and one that uses `wgpu-native`
+**Плюсы**
+ - Ты можешь иметь два `билда` в одно и то же время, один использующий Dawn, другой - `wgpu-native`
 
-**Cons**
- - This is a "meta-distribution" that fetches the one you want at configuration time (i.e., when calling `cmake` the first time) so you need an **Internet connection** and **git** at that time.
+**Минусы**
+ - Это "мета-пакет", который выбирает один из билдов во время конфигурации (тобиш, когда делаешь `cmake` в первый раз), поэтому нужно и **интернет соединение**, и **git**.
 
-And of course depending on your choice the pros and cons of *Option A* and *Option B* apply.
+Ну и понятно, в зависимости от выбора, получаешь плюсы и минусы *Опции A* и *Опции B*.
 
-### Integration
+### Подрубаем
 
-Whichever distribution you choose, the integration is the same:
+В независимости от опции, которую ты выбрал, подрубка одинаковая:
 
- 1. Download the zip of your choice.
- 2. Unzip it at the root of the project, there should be a `webgpu/` directory containing a `CMakeLists.txt` file and some other (.dll or .so).
- 3. Add `add_subdirectory(webgpu)` in your `CMakeLists.txt`.
+ 1. Скачай zip архив, выбранной опции.
+ 2. Разархивируй в корень проекта, там должна быть папка `webgpu/`, содержащая файл `CMakeLists.txt` и некоторые другие (.dll или .so).
+ 3. Добавь `add_subdirectory(webgpu)` в твой `CMakeLists.txt`.
 
 ```{lit} CMake, Dependency subdirectories ru (insert in {{Define app target}} before "add_executable")
-# Include webgpu directory, to define the 'webgpu' target
+# Добавь папку webgpu, чтобы определить 'webgpu' target
 add_subdirectory(webgpu)
 ```
 
 ```{important}
-The name 'webgpu' here designate the directory where GLFW is located, so there should be a file `webgpu/CMakeLists.txt`. Otherwise it means that `webgpu.zip` was not decompressed in the correct directory; you may either move it or adapt the `add_subdirectory` directive.
+Имя 'webgpu' обозначает папку, где располагается GLFW, поэтому должен быть файл `webgpu/CMakeLists.txt`. Иначе, означает, что `webgpu.zip` был разархивирован в не ту директорию; тогда нужно либо переместить папку куда надо, либо изменить команду `add_subdirectory`.
 ```
 
- 4. Add the `webgpu` target as a dependency of our app, using the `target_link_libraries` command (after `add_executable(App main.cpp)`).
+ 4. Добавь таргет `webgpu`  как зависимость в твое приложение, используя команду `target_link_libraries` (после `add_executable(App main.cpp)`).
+
 
 ```{lit} CMake, Link libraries ru (insert in {{Define app target}} after "add_executable")
-# Add the 'webgpu' target as a dependency of our App
+# Добавить таргет 'webgpu' как зависимость для App
 target_link_libraries(App PRIVATE webgpu)
 ```
 
 ```{tip}
-This time, the name 'webgpu' is one of the *target* defined in `webgpu/CMakeLists.txt` by calling `add_library(webgpu ...)`, it is not related to a directory name.
+Теперь, имя 'webgpu' это один из *таргетов*, определенных в `webgpu/CMakeLists.txt` вызовом `add_library(webgpu ...)`, и оно никак не связано с названием папки. 
 ```
 
-One additional step when using pre-compiled binaries: call the function `target_copy_webgpu_binaries(App)` at the end of `CMakeLists.txt`, this makes sure that the .dll/.so file that your binary depends on at runtime is copied next to it. Whenever you distribute your application, make sure to also distribute this dynamic library file as well.
+Еще один дополнительный шаг, если используешь прекомпилированные библиотеки: вызови функцию `target_copy_webgpu_binaries(App)` в конце `CMakeLists.txt`, благодаря этому файл .dll/.so, от которого зависит бинарник, будет скопирован прямо к нему. Всякий раз когда ты будешь распространять свое приложение, убедись, что файл динамической библиотеки лежит рядом с бинарником.
+
 
 ```{lit} CMake, Link libraries ru (append)
-# The application's binary must find wgpu.dll or libwgpu.so at runtime,
-# so we automatically copy it (it's called WGPU_RUNTIME_LIB in general)
-# next to the binary.
+# Бинарник приложения должен найти wgpu.dll или libwgpu.so в рантайме,
+# поэтому мы автоматически копируем его (вообще штука называется WGPU_RUNTIME_LIB)
+# к бинарнику.
 target_copy_webgpu_binaries(App)
 ```
 
 ```{note}
-In the case of Dawn, there is no precompiled binaries to copy but I define the `target_copy_webgpu_binaries` function anyway (it does nothing) so that you can really use the same CMakeLists with both distributions.
+В случае Dawn, нет прекомпилированного бинарника для копирования, но я все равно определяю функцию `target_copy_webgpu_binaries` (она ничего не будет делать), для того, чтобы один и тот же CMakeLists работал с обоими пакетами (`wgpu-native` и Dawn).
 ```
 
-Testing the installation
+Проверяем установку
 ------------------------
 
-To test the implementation, we simply create the WebGPU **instance**, i.e., the equivalent of the `navigator.gpu` we could get in JavaScript. We then check it and destroy it.
+Чтобы проверить, что все ок, создадим WebGPU **instance**, то есть, по сути это то же самое, что `navigator.gpu` из JavaScript. После мы проверим его и уничтожим.
 
 ```{important}
-Make sure to include `<webgpu/webgpu.h>` before using any WebGPU function or type!
+Убедись, что за инклудил `<webgpu/webgpu.h>` перед тем как использовать функции и объекты WebGPU!
 ```
 
 ```{lit} C++, Includes ru
-// Includes
+// Инклудим
 #include <webgpu/webgpu.h>
 #include <iostream>
 ```
 
 ```{lit} C++, file: main.cpp ru
-{{Includes}}
+{{Includes ru}}
 
 int main (int, char**) {
-    {{Create WebGPU instance}}
+    {{Create WebGPU instance ru}}
 
-    {{Check WebGPU instance}}
+    {{Check WebGPU instance ru}}
 
-    {{Destroy WebGPU instance}}
+    {{Destroy WebGPU instance ru}}
 
     return 0;
 }
 ```
 
-### Descriptors and Creation
+### Дескрипторы(Descriptors) и Создание
 
-The instance is created using the `wgpuCreateInstance` function. Like all WebGPU functions meant to **create** an entity, it takes as argument a **descriptor**, which we can use to specify options regarding how to set up this object.
+
+Инстанс (instance, экземляр) создается функцией `wgpuCreateInstance`. Как и все функции WebGPU, предназначенные для **создания** какой-либо сущности, в качестве аргумента она берет **дескриптор**, который мы используем, чтобы задать определенные свойства для создания объекта.
 
 ```{lit} C++, Create WebGPU instance ru
-// We create a descriptor
+// Создаем дескриптор
 WGPUInstanceDescriptor desc = {};
 desc.nextInChain = nullptr;
 
-// We create the instance using this descriptor
+// Создаем инстанс, используя дескриптор
 WGPUInstance instance = wgpuCreateInstance(&desc);
 ```
 
 ```{note}
-The descriptor is a kind of way to **pack many function arguments** together, because some descriptors really have a lot of fields. It can also be used to write utility functions that take care of populating the arguments, to ease the program's architecture.
+Дескриптор это такой способ **упаковать большое количество аргументов функции** вместе, ибо некоторые дескрипторы имеют огромное количество полей. Он также может быть использован, чтобы писать вспомогательные функции для заполнения (populating) этих аргументов, упрощая таким образом архитектуру программы.
 ```
 
-We meet another WebGPU **idiom** in the `WGPUInstanceDescriptor` structure: the first field of a descriptor is always a pointer called `nextInChain`. This is a generic way for the API to enable **custom extensions** to be added in the future, or to return multiple entries of data. In a lot of cases, we set it to `nullptr`.
+Также тут мы встречаем другую **идиому** WebGPU  в структуре `WGPUInstanceDescriptor`: первое поле дескриптора это всегда указатель с названием `nextInChain`. Это общий способ для API добавлять **пользовательские дополнения**, или для возврата нескольких записей данных (entries of data). В большинстве случаев мы просто делаем его `nullptr`.
 
 
-### Check
+### Проверка
 
-A WebGPU entity created with a `wgpuCreateSomething` function is technically **just a pointer**. It is a blind handle that identifies the actual object, which lives on the backend side and to which we never need direct access.
+Сущность WebGPU, созданная функцией `wgpuCreateSomething`, является **обычным указателем**. Это 'слепой' хэндл (handle), который определяет объект, живущий где-то на бэкенде и к которому нам никогда не понадобится прямого доступа.
 
-To check that an object is valid, we can just compare it with `nullptr`, or use the boolean operator:
+Чтобы проверить является ли объект валидным, мы можем просто сравнит его с `nullptr`, или использовать булевый оператор:
 
 ```{lit} C++, Check WebGPU instance ru
-// We can check whether there is actually an instance created
+// Мы можем проверить создался ли инстанс
 if (!instance) {
     std::cerr << "Could not initialize WebGPU!" << std::endl;
     return 1;
 }
 
-// Display the object (WGPUInstance is a simple pointer, it may be
-// copied around without worrying about its size).
+// Отобразить объект (WGPUInstance это обычный указатель, он может быть
+// скопирован, не заботясь о его размере).
 std::cout << "WGPU instance: " << instance << std::endl;
 ```
 
-This should display something like `WGPU instance: 000001C0D2637720` at startup.
+Все это должно вывести при запуске `WGPU instance: 000001C0D2637720`.
 
-### Destruction and lifetime management
+### Уничтожение и управление временем жизни
 
-All the entities that can be **created** using WebGPU must eventually be **released**. A procedure that creates an object always looks like `wgpuCreateSomething`, and its equivalent for releasing it is `wgpuSomethingRelease`.
+Все сущности, которые могут быть **созданы**, используя WebGPU, должны быть и **освобождены**. Процедура, создающая объект, всегда выглядит типа `wgpuCreateSomething`, и ее эквивалент для 'освобождения' - `wgpuSomethingRelease`.
 
-Note that each object internally holds a reference counter, and releasing it only frees related memory if no other part of your code still references it (i.e., the counter falls to 0):
+Заметьте, что каждый объект внутри хранит счетчик ссылок (reference counter), и освобождение памяти происходит только если никакая другая часть когда не ссылает на нее (иначе говоря, только если счетчик равен 0):
 
 ```C++
-WGPUSomething sth = wgpuCreateSomething(/* descriptor */);
+WGPUSomething sth = wgpuCreateSomething(/* дескриптор */);
 
-// This means "increase the ref counter of the object sth by 1"
+// Это означает "увеличить ref counter объекта на 1"
 wgpuSomethingReference(sth);
 // Now the reference is 2 (it is set to 1 at creation)
+// Теперь ссылок 2 (так как 1 при создании)
 
-// This means "decrease the ref counter of the object sth by 1
-// and if it gets down to 0 then destroy the object"
+// Это означает "уменьшить ref counter объекта на 1
+// и если он станет 0 тогда уничтожь объект"
 wgpuSomethingRelease(sth);
-// Now the reference is back to 1, the object can still be used
+// Теперь ссылок 1, объект все еще может быть использован
 
-// Release again
+// Освобождаем опять
 wgpuSomethingRelease(sth);
-// Now the reference is down to 0, the object is destroyed and
-// should no longer be used!
+// Теперь ссылок 0, объект уничтожен
+// и не может больше быть использованным!
 ```
 
-In particular, we need to release the global WebGPU instance:
+В частности, мы должны освободить и глобальный инстанс WebGPU:
 
 ```{lit} C++, Destroy WebGPU instance ru
-// We clean up the WebGPU instance
+// Уничтожаем инстанс WebGPU
 wgpuInstanceRelease(instance);
 ```
 
-### Implementation-specific behavior
+### Поведение, зависимое от реализации
 
-In order to handle the slight differences between implementations, the distributions I provide also define the following preprocessor variables:
+Для того, чтобы обрабатывать некоторые различия между реализациями, репа, которую я предоставил, также определяет следующие дефайны:
 
 ```C++
-// If using Dawn
+// Если используешь Dawn
 #define WEBGPU_BACKEND_DAWN
 
-// If using wgpu-native
+// Если используешь wgpu-native
 #define WEBGPU_BACKEND_WGPU
 
-// If using emscripten
+// Если используешь emscripten
 #define WEBGPU_BACKEND_EMSCRIPTEN
 ```
 
-### Building for the Web
+### Сборка под Web
 
-The WebGPU distribution listed above are readily compatible with [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) and if you have trouble with building your application for the web, you can consult [the dedicated appendix](../appendices/building-for-the-web.md).
+Репа WebGPU, описанная выша, также совместима с [Emscripten](https://emscripten.org/docs/getting_started/downloads.html) и если у вас проблемы со сборкой проекта для веба, обратись к [the dedicated appendix](../appendices/building-for-the-web.md).
 
-As we will add a few options specific to the web build from time to time, we can add a section at the end of our `CMakeLists.txt`:
+Так как мы будем иногда добавлять специфичные для веба параметры, мы можем добавить для этого спец секцию в конце `CMakeLists.txt`:
 
 ```{lit} CMake, file: CMakeLists.txt ru (append)
-# Options that are specific to Emscripten
+# Параметры специфичные для Emscripten
 if (EMSCRIPTEN)
     {{Emscripten-specific options}}
 endif()
 ```
 
-For now we only change the output extension so that it is an HTML web page (rather than a WebAssembly module or JavaScript library):
+Теперь нам нужно поменять формат выходного файла, поскольку теперь это HTML веб страница (а не модуль WebAssembly или библиотека JavaScript):
 
 ```{lit} CMake, Emscripten-specific options ru
-# Generate a full web page rather than a simple WebAssembly module
+# Сгенерировать полноценную html веб страницу, а не модуль вебасм
 set_target_properties(App PROPERTIES SUFFIX ".html")
 ```
 
-For some reason the instance descriptor **must be null** (which means "use default") when using Emscripten, so we can already use our `WEBGPU_BACKEND_EMSCRIPTEN` macro:
+По какой-то причине дескриптор инстанса **должен быть null** (что означает "использовать по умолчанию") при использовании Emscripten, поэтому воспользуемся нашим дефайном `WEBGPU_BACKEND_EMSCRIPTEN`:
+
 
 ```{lit} C++, Create WebGPU instance ru (replace)
-// We create a descriptor
+// Создаем дескриптор
 WGPUInstanceDescriptor desc = {};
 desc.nextInChain = nullptr;
 
-// We create the instance using this descriptor
+// Создаем инстанс с помощью дескриптора
 #ifdef WEBGPU_BACKEND_EMSCRIPTEN
 WGPUInstance instance = wgpuCreateInstance(nullptr);
 #else //  WEBGPU_BACKEND_EMSCRIPTEN
@@ -337,9 +342,10 @@ WGPUInstance instance = wgpuCreateInstance(&desc);
 #endif //  WEBGPU_BACKEND_EMSCRIPTEN
 ```
 
-Conclusion
+Заключение
 ----------
 
-In this chapter we set up WebGPU and learnt that there are **multiple backends** available. We also saw the basic idioms of **object creation and destruction** that will be used all the time in WebGPU API!
+В этой главе мы настроили WebGPU и узнали, что существует **несколько бэкендов**. Также мы увидели основные идиомы **создания и уничтожения объекта**, которые мы будем использовать все время в WebGPU API!
 
-*Resulting code:* [`step001`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step001)
+
+*Итоговый код:* [`step001`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step001)
