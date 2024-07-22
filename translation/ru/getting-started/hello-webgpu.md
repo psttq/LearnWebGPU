@@ -9,83 +9,88 @@
 
 *Итоговый код:* [`step001`](https://github.com/eliemichel/LearnWebGPU-Code/tree/step001)
 
-WebGPU is a *Render Hardware Interface* (RHI), which means that it is a programming library meant to provide a **unified interface** for multiple underlying graphics hardware and operating system setups.
+WebGPU это *Render Hardware Interface* (RHI, *Аппаратный интерфейс рендеринга*), что означает, что это библиотека, которая дает **универсальный интерфейс** для целого множества графической аппаратуры и операционных систем.
 
-For your C++ code, WebGPU is nothing more than **a single header file**, which lists all the available procedures and data structures: [`webgpu.h`](https://github.com/webgpu-native/webgpu-headers/blob/main/webgpu.h).
+Для вашего C++ кода WebGPU не более чем **одиночный заголовочный файл**, который описывает все доступные процедуры и структуры данных: [`webgpu.h`](https://github.com/webgpu-native/webgpu-headers/blob/main/webgpu.h).
 
-However, when building the program, your compiler must know in the end (at the final *linking* step) **where to find** the actual implementation of these functions. Contrary to native APIs, the WebGPU implementation is not provided by the driver, so we must explicitly provide it.
+Однако, во время сборки программы, компилятор должен знать в самом конце (на финальном этапе *линковки*) **где найти** реализацию этих функций. В отличие от нативных API, имплементация WebGPU не предоставляется драйвером, поэтому мы должны явно предоставить ее.
 
 ```{figure} /images/rhi-vs-opengl.png
 :align: center
-A *Render Hardware Interface* (RHI) like WebGPU is **not directly provided by the drivers**: we need to link to a library that implements the API on top of the low-level one that the system supports.
+
+*Render Hardware Interface* (RHI), как WebGPU, **не предоставлен напрямую драйверами**: мы должны слинковать библиотеку, которая реализует API поверх низкоуровневых, поддерживаемых системой.
+
 ```
 
-Installing WebGPU
+Установка WebGPU
 -----------------
 
-There exists mostly two implementations of the WebGPU native header:
+Существует две основные реализации нативного заголовка WebGPU:
 
- - [wgpu-native](https://github.com/gfx-rs/wgpu-native), exposing a native interface to the [`wgpu`](https://github.com/gfx-rs/wgpu) Rust library developed for Firefox.
- - Google's [Dawn](https://dawn.googlesource.com/dawn), developed for Chrome.
+ - [wgpu-native](https://github.com/gfx-rs/wgpu-native), дающий нативный интерфейс [`wgpu`](https://github.com/gfx-rs/wgpu) Библиотеки на Rust, разработанной для Firefox.
+ - Google's [Dawn](https://dawn.googlesource.com/dawn), разработанной для Chrome.
 
 ```{figure} /images/different-backend.png
 :align: center
-There are (at least) two implementations of WebGPU, developed for the two main web engines.
+
+Существуют (как минимум) две реализации WebGPU, разработанных для двух главных web движков.
 ```
 
-These two implementations still have **some discrepancies**, but these will disappear as the WebGPU specification gets stable. I try to write this guide such that it **works for both** of them.
+Эти две реализации до сих пор имеют **некоторые расхождения**, но они исчезнуть когда спецификация WebGPU станет стабильной. Я пытаюсь писать этот гайд так, чтобы все **работало для обоих из них**.
 
-To ease the integration of either of these in a CMake project, I share a [WebGPU-distribution](https://github.com/eliemichel/WebGPU-distribution) repository that lets you chose one of the following options:
+Чтобы упростить интеграцию любого из них, я сделал репозиторий [WebGPU-distribution](https://github.com/eliemichel/WebGPU-distribution), который позволяет выбрать одну из следующих опций:
 
-`````{admonition} Too many options? (Click Me)
+`````{admonition} Слишком много опций? (Кликни)
 :class: foldable quickstart
 
-*Do you favor fast build over detailed error messages?*
+*Ты предпочитаешь быструю сборку детализированным сообщениям об ошибках?*
 
-````{admonition} Yes please, **fast build** and **no need** for an Internet connection the first time I build
+````{admonition} Ага, **быстрая сборка** и **ненадобность** интернет соединения для первой сборки
 :class: foldable yes
 
-Go for [**Option A**](#option-a-the-lightness-of-wgpu-native) (wgpu-native)!
+[**Опция A**](#option-a-the-lightness-of-wgpu-native) (wgpu-native) для тебя!
+
 ````
 
-````{admonition} No, I'd rather have **detailed error messages**.
+````{admonition} Нет, я предпочитаю **подробные сообщения об ошибках**.
 :class: foldable no
 
-Go for [**Option B**](#option-b-the-comfort-of-dawn) (Dawn)!
+Тогда [**Опция B**](#option-b-the-comfort-of-dawn) (Dawn)!
 
 ````
 
-```{admonition} I don't want to chose.
+```{admonition} Без понятия, не хочу выбирать...
 :class: foldable warning
 
-Go for [**Option C**](#option-c-the-flexibility-of-both), that lets you switch from one backend to another one at any time!
+Попробуй [**Опцию C**](#option-c-the-flexibility-of-both), которая позволит переключаться с одного бэкенда на другой в любое время!
 ```
 
 `````
 
-### Option A: The lightness of wgpu-native
+### Опция A: Легковесный wgpu-native
 
-Since `wgpu-native` is written in rust, we cannot easily build it from scratch so the distribution includes pre-compiled libraries:
+Так как `wgpu-native` написан на rust, мы не сможем собрать все с нуля, поэтому существуют прекомпилированные (pre-compiled) библиотеки:
 
 ```{important}
-**WIP:** Use the "for any platform" link rather than the platform-specific ones, I haven't automated their generation yet so they are usually behind the main one.
+**WIP:** Используй ссылку "для любой платформы", а не специфичные для какой-либо платформы. Я так и не автоматизировал их генерацию, поэтому они обычно отстают от главного.
 ```
 
- - [wgpu-native for any platform](https://github.com/eliemichel/WebGPU-distribution/archive/refs/tags/wgpu-v0.19.4.1.zip) (a bit heavier as it's a merge of all possible platforms)
- - [wgpu-native for Linux](#)
- - [wgpu-native for Windows](#)
- - [wgpu-native for MacOS](#)
+ - [wgpu-native для любых платформ](https://github.com/eliemichel/WebGPU-distribution/archive/refs/tags/wgpu-v0.19.4.1.zip) (немного более тяжелый поскольку содержит все возможные платформы)
+ - [wgpu-native для Linux](#)
+ - [wgpu-native для Windows](#)
+ - [wgpu-native для MacOS](#)
 
 ```{note}
-The pre-compiled binaries are provided by the `wgpu-native` project itself so you can likely trust them. The only thing my distribution adds is a `CMakeLists.txt` that makes it easy to integrate.
+Прекомпилированные бинарники даны проектом `wgpu-native`, поэтому смело доверяйте им. Единственное что я добавил это `CMakeLists.txt`, который позволяет их легко подключить.
 ```
 
 **Pros**
- - This is the most lightweight to build with.
+ - Это самый легковесный вариант для сборки.
+
 
 **Cons**
- - You do not build from source.
- - `wgpu-native` does not give as informative debug information as Dawn.
+ - Не нужно собирать из исходников.
+ - `wgpu-native` не дает debug инфу как Dawn.
 
 ### Option B: The comfort of Dawn
 
