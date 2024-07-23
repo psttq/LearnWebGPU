@@ -115,43 +115,43 @@ wgpuInstanceRequestAdapter(
 
 В следующих главах мы увидим более продвинутое использование контекста для получения адаптера, как только реквест будет выполнен.
 
-````{admonition} Note - JavaScript API
+````{admonition} Заметка - JavaScript API
 :class: foldable note
 
-In the **JavaScript API** of WebGPU, asynchronous functions use the built-in [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) mechanism:
+В **API JavaScript** WebGPU, используют механизм [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise):
+
 
 ```js
 const adapterPromise = navigator.gpu.requestAdapter(options);
-// The "promise" has no value yet, it is rather a handle that we may connect to callbacks:
+// "промис" еще не имеет значения, он скорее является средством для подключением коллбэков:
 adapterPromise.then(onAdapterRequestEnded).catch(onAdapterRequestFailed);
 
 // [...]
 
-// Instead of a 'status' argument, we have multiple callbacks:
+// Вместо аргумента 'status', мы имеем множество коллбэков:
 function onAdapterRequestEnded(adapter) {
-	// do something with the adapter
+	// сделать что-то с адаптером
 }
 function onAdapterRequestFailed(error) {
-	// display the error message
+	// отобразить ошибку
 }
 ```
 
-The JavaScript language later introduced a mechanism [`async` function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function), which enables **"awaiting"** for an asynchronous function without explicitly creating a callback:
+В языке JavaScript позже появился механизм [`async` функций](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function), который позволяет **"ждать"** асинхронные функции без создания коллбэков:
 
 ```js
-// (From within an async function)
+// (Внутри асинхронной функции)
 const adapter = await navigator.gpu.requestAdapter(options);
-// do something with the adapter
+// что-то делаем с адаптером
 ```
+Этот механизм также существуют и в других языка, например, [Python](https://docs.python.org/3/library/asyncio-task.html), и даже был представлен в C++20 с [корутинами](https://en.cppreference.com/w/cpp/language/coroutines).
 
-This mechanism now exists in other languages such as [Python](https://docs.python.org/3/library/asyncio-task.html), and has even been introduced in C++20 with [coroutines](https://en.cppreference.com/w/cpp/language/coroutines).
-
-I try however to **avoid stacking up too many levels of abstraction** in this guide so we will not use these (and also stick to C++17), but advanced readers may want to create their own WebGPU wrapper that relies on coroutines.
+Тем не менее я пытаюсь **избегать большого уровня абстракций** в этом гайде, поэтому мы не будем их использовать (и ограничимся C++17), но продвинутые читатели могут создать свой враппер WebGPU, который полагается на корутины.
 ````
 
 ### Request
 
-We can wrap the whole adapter request in the following `requestAdapterSync()` function, which I provide so that we do not spend too much time on **boilerplate** code (the important part here is that you get the idea of the **asynchronous callback** described above):
+Мы можем обернуть весь реквест адаптера в функцию `requestAdapterSync()`, которую я просто сразу вам дам, чтобы не тратить слишком много времени на коде **бойлерплейта** (важная часть была про идею асинхронных коллбэков, описанная выше):
 
 ```{lit} C++, Includes ru (append)
 #include <cassert>
@@ -159,28 +159,28 @@ We can wrap the whole adapter request in the following `requestAdapterSync()` fu
 
 ```{lit} C++, Request adapter function ru
 /**
- * Utility function to get a WebGPU adapter, so that
+ * Вспомогательная функция для получения адаптера WebGPU, так чтобы
  *     WGPUAdapter adapter = requestAdapterSync(options);
- * is roughly equivalent to
+ * было эквивалентно
  *     const adapter = await navigator.gpu.requestAdapter(options);
  */
 WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions const * options) {
-	// A simple structure holding the local information shared with the
-	// onAdapterRequestEnded callback.
+	// Простенькая структура, содержащая информацию для
+	// коллбэка onAdapterRequestEnded.
 	struct UserData {
 		WGPUAdapter adapter = nullptr;
 		bool requestEnded = false;
 	};
 	UserData userData;
 
-	// Callback called by wgpuInstanceRequestAdapter when the request returns
-	// This is a C++ lambda function, but could be any function defined in the
-	// global scope. It must be non-capturing (the brackets [] are empty) so
-	// that it behaves like a regular C function pointer, which is what
-	// wgpuInstanceRequestAdapter expects (WebGPU being a C API). The workaround
-	// is to convey what we want to capture through the pUserData pointer,
-	// provided as the last argument of wgpuInstanceRequestAdapter and received
-	// by the callback as its last argument.
+	// Коллбэк вызовется wgpuInstanceRequestAdapter, когда реквест будет выполнен
+	// Это лямбда функция C++, однако ей может быть любая функция определенная
+	// в global scope. Это должна быть non-capturing лямбда (скобки [] пусты),
+	// для того чтобы она вела себя как простой сишный указатель на функцию, именно этого
+	// и ожидает wgpuInstanceRequestAdapter (ибо WebGPU это C API). Идея в том,
+	// чтобы использовать для получения нужной информации указатель pUserData,
+	// переданный последним аргументом в wgpuInstanceRequestAdapter и полученный
+	// коллбэком последним аргументом.
 	auto onAdapterRequestEnded = [](WGPURequestAdapterStatus status, WGPUAdapter adapter, char const * message, void * pUserData) {
 		UserData& userData = *reinterpret_cast<UserData*>(pUserData);
 		if (status == WGPURequestAdapterStatus_Success) {
@@ -191,16 +191,16 @@ WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions 
 		userData.requestEnded = true;
 	};
 
-	// Call to the WebGPU request adapter procedure
+	// Вызываем процедуру реквеста адаптера WebGPU
 	wgpuInstanceRequestAdapter(
-		instance /* equivalent of navigator.gpu */,
+		instance /* эквивалент navigator.gpu */,
 		options,
 		onAdapterRequestEnded,
 		(void*)&userData
 	);
 
-	// We wait until userData.requestEnded gets true
-	{{Wait for request to end}}
+	// ждем пока userData.requestEnded не станет true
+	{{Wait for request to end ru}}
 
 	assert(userData.requestEnded);
 
@@ -209,11 +209,11 @@ WGPUAdapter requestAdapterSync(WGPUInstance instance, WGPURequestAdapterOptions 
 ```
 
 ```{lit} C++, Utility functions ru (hidden)
-// All utility functions are regrouped here
-{{Request adapter function}}
+// Все вспомогательные функции перегруппированы здесь
+{{Request adapter function ru}}
 ```
 
-In the main function, after creating the WebGPU instance, we can get the adapter:
+В основной функции, после создания инстанса WebGPU, можем получить адаптер:
 
 ```{lit} C++, Request adapter ru
 std::cout << "Requesting adapter..." << std::endl;
@@ -225,13 +225,13 @@ WGPUAdapter adapter = requestAdapterSync(instance, &adapterOpts);
 std::cout << "Got adapter: " << adapter << std::endl;
 ```
 
-#### Waiting for the request to end
+#### Ждем окончания реквеста
 
-You may have noticed the comment above saying **we need to wait** for the request to end, i.e. for the callback to be invoked, before returning.
+Ты возможно заметил коммент выше **нужно дождаться** окончания реквеста, то есть вызова коллбэка, перед возвратом функции.
 
-When using the **native** API (Dawn or `wgpu-native`), it is in practice **not needed**, we know that when the `wgpuInstanceRequestAdapter` function returns its callback has been called.
+Когда мы используем **нативный** API (Dawn или `wgpu-native`), что на практике **не нужно**, мы знаем что функция `wgpuInstanceRequestAdapter` сделает возврат, только когда его коллбэк будет вызван.
 
-However, when using **Emscripten**, we need to hand the control **back to the browser** until the adapter is ready. In JavaScript, this would be using the `await` keyword. Instead, Emscripten provides the `emscripten_sleep` function that interrupts the C++ module for a couple of milliseconds:
+Однако, когда мы используем **Emscripten**, мы должны вернуть управление **обратно браузеру** до тех пор пока адаптер не будет готов. В JavaScript, это возможно благодаря ключевому слову `await`. В свою очередь, Emscripten дает функцию `emscripten_sleep`, которая прерывает модуль C++ на несколько миллисекунд:
 
 ```{lit} C++, Wait for request to end ru
 #ifdef __EMSCRIPTEN__
@@ -241,14 +241,14 @@ However, when using **Emscripten**, we need to hand the control **back to the br
 #endif // __EMSCRIPTEN__
 ```
 
-In order to use this, we must add a **custom link option** in `CMakeLists.txt`, in the `if (EMSCRIPTEN)` block:
+Для того ,чтобы использовать это, нам нужно добавить **кастомную опцию линковки** в `CMakeLists.txt`, в блок `if (EMSCRIPTEN)`:
 
 ```{lit} CMake, Emscripten-specific options ru (append)
-# Enable the use of emscripten_sleep()
+# Позволяет использовать emscripten_sleep()
 target_link_options(App PRIVATE -sASYNCIFY)
 ```
 
-Also do not forget to include `emscripten.h` in order to use `emscripten_sleep`:
+Также не забудьте заинклудить `emscripten.h` для использования `emscripten_sleep`:
 
 ```{lit} C++, Includes ru (append)
 #ifdef __EMSCRIPTEN__
@@ -256,9 +256,9 @@ Also do not forget to include `emscripten.h` in order to use `emscripten_sleep`:
 #endif // __EMSCRIPTEN__
 ```
 
-### Destruction
+### Уничтожение
 
-Like for the WebGPU instance, we must release the adapter:
+Как и для инстанса WebGPU, мы должны освободить память адаптера:
 
 ```{lit} C++, Destroy adapter ru
 wgpuAdapterRelease(adapter);
@@ -267,33 +267,35 @@ wgpuAdapterRelease(adapter);
 ````{note}
 We will no longer need to use the `instance` once we have selected our **adapter**, so we can call `wgpuInstanceRelease(instance)` right after the adapter request **instead of at the very end**. The **underlying instance** object will keep on living until the adapter gets released but we do not need to manager this.
 
+Нам больше не нужно использовать `instance` после выбора нашего **адаптера**, поэтому можем вызвать`wgpuInstanceRelease(instance)` сразу после реквеста адаптера **вместо самого конца**. **Инстанс** будет жить где-то там внутри, пока адаптер не будет освобожден и потому нам не нужно контролировать его освобождение.
+
 ```{lit} C++, Create things ru (hidden)
-{{Create WebGPU instance}}
-{{Check WebGPU instance}}
-{{Request adapter}}
-// We no longer need to use the instance once we have the adapter
-{{Destroy WebGPU instance}}
+{{Create WebGPU instance ru}}
+{{Check WebGPU instance ru}}
+{{Request adapter ru}}
+// Нам больше не нужен инстанс после того как получили адаптер
+{{Destroy WebGPU instance ru}}
 ```
 ````
 
 ```{lit} C++, file: main.cpp ru (replace, hidden)
-{{Includes}}
+{{Includes ru}}
 
-{{Utility functions in main.cpp}}
+{{Utility functions in main.cpp ru}}
 
 int main() {
-	{{Create things}}
+	{{Create things ru}}
 
-	{{Main body}}
+	{{Main body ru}}
 
-	{{Destroy things}}
+	{{Destroy things ru}}
 
 	return 0;
 }
 ```
 
 ```{lit} C++, Utility functions in main.cpp ru (hidden)
-{{Utility functions}}
+{{Utility functions ru}}
 ```
 
 ```{lit} C++, Main body ru (hidden)
@@ -301,24 +303,24 @@ int main() {
 ```
 
 ```{lit} C++, Destroy things ru (hidden)
-{{Destroy adapter}}
+{{Destroy adapter ru}}
 ```
 
-## Inspecting the adapter
+## Рассмотрим адаптер
 
-The adapter object provides **information about the underlying implementation** and hardware, and about what it is able or not to do. It advertises the following information:
+Адаптер дает **информацию об внутренней реализации** и устройствах, и о том, что можно сделать, а что нельзя. Он дает следующую информацию:
 
--   **Limits** regroup all the **maximum and minimum** values that may limit the behavior of the underlying GPU and its driver. A typical examples is the maximum texture size. Supported limits are retrieved using `wgpuAdapterGetLimits`.
--   **Features** are non-mandatory **extensions** of WebGPU, that adapters may or may not support. They can be listed using `wgpuAdapterEnumerateFeatures` or tested individually with `wgpuAdapterHasFeature`.
--   **Properties** are extra information about the adapter, like its name, vendor, etc. Properties are retrieved using `wgpuAdapterGetProperties`.
+-   **Limits (ограничения)** содержит все **максимальные и минимальные** значения которые ограничивают поведение GPU и его драйвера. Например, максимальный размер текстуры. Доступные ограничения можно получить используя `wgpuAdapterGetLimits`.
+-   **Features (фичи)** не обязательные **расширения** WebGPU, которые адаптера могут или нет могут поддерживать. Можно получить используя `wgpuAdapterEnumerateFeatures` или тестируя индивидуально с помощью `wgpuAdapterHasFeature`.
+-   **Properties (свойства) ** дополнительная информация об адаптере, типо имени, производителя, и тд. Свойства получаем с помощью `wgpuAdapterGetProperties`.
 
 ```{note}
-In the accompanying code, adapter capability inspection is enclosed in the `inspectAdapter()` function.
+В приведенном коде, рассмотрение возможностей адаптера находятся в функции `inspectAdapter()`.
 ```
 
 ```{lit} C++, Utility functions ru (append, hidden)
 void inspectAdapter(WGPUAdapter adapter) {
-	{{Inspect adapter}}
+	{{Inspect adapter ru}}
 }
 ```
 
@@ -326,7 +328,7 @@ void inspectAdapter(WGPUAdapter adapter) {
 inspectAdapter(adapter);
 ```
 
-### Limits
+### Ограничения
 
 We can first list the limits that our adapter supports with `wgpuAdapterGetLimits`. This function takes as argument a `WGPUSupportedLimits` object where it writes the limits:
 
